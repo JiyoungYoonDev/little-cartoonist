@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.venv/
+.claude
+# Python
+__pycache__/
+*.pyc
+
+# Alembic
+alembic.ini
+
+# Env
+.env
+.env.local
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Expo
+.expo/
+dist/
+
+# Docs (keep README.md only)
+/Little_Cartoonist_*.md
+/START_HERE.md
+
+# Build
+*.tsbuildinfo
