@@ -11,9 +11,9 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { palette, fonts } from '../constants/tokens';
-import { getChildProfile } from '../services/api-client';
 import { ensureAuth } from '../services/auth';
 import LogoSvg from '../assets/images/logo/test1.svg';
+import { getChildProfile } from '@/services/children';
 
 const STORAGE_KEY_CHILD_ID = '@littlecartoonist:child_id';
 const { width } = Dimensions.get('window');
