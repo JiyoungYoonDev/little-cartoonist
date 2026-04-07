@@ -1,113 +1,144 @@
-import { Dimensions, Pressable, View } from 'react-native';
+import React, { useEffect, useCallback } from 'react';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { router } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Image } from 'expo-image';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withSequence,
+  Easing,
+} from 'react-native-reanimated';
+import { palette, fonts } from '../constants/tokens';
+import { getChildProfile } from '../services/api-client';
+import { ensureAuth } from '../services/auth';
+import LogoSvg from '../assets/images/logo/test1.svg';
 
+const STORAGE_KEY_CHILD_ID = '@littlecartoonist:child_id';
 const { width } = Dimensions.get('window');
-const isTablet = width > 768;
 
-export default function HomeScreen() {
+export default function SplashScreen() {
+  // Mascot
+  const mascotOpacity = useSharedValue(0);
+  const mascotScale = useSharedValue(0.3);
+  const mascotTranslateY = useSharedValue(60);
+  // Title
+  const titleOpacity = useSharedValue(0);
+  const titleTranslateY = useSharedValue(20);
+
+  const navigate = useCallback(async () => {
+    try {
+      await ensureAuth();
+    } catch {}
+
+    const childId = await AsyncStorage.getItem(STORAGE_KEY_CHILD_ID);
+    if (!childId) {
+      router.replace('/onboarding');
+      return;
+    }
+
+    try {
+      await getChildProfile(childId);
+    } catch {
+      await AsyncStorage.removeItem(STORAGE_KEY_CHILD_ID);
+      router.replace('/onboarding');
+      return;
+    }
+
+    router.replace('/(tabs)');
+  }, []);
+
+  useEffect(() => {
+    // Step 1: Mascot fades in + slides up + overshoots scale
+    mascotOpacity.value = withDelay(
+      300,
+      withTiming(1, { duration: 600 }),
+    );
+    mascotTranslateY.value = withDelay(
+      300,
+      withTiming(0, { duration: 800, easing: Easing.out(Easing.cubic) }),
+    );
+    mascotScale.value = withDelay(
+      300,
+      withSequence(
+        // grow past target
+        withTiming(1.12, { duration: 600, easing: Easing.out(Easing.cubic) }),
+        // bounce back
+        withTiming(0.95, { duration: 250, easing: Easing.inOut(Easing.quad) }),
+        // settle
+        withTiming(1, { duration: 250, easing: Easing.inOut(Easing.quad) }),
+      ),
+    );
+
+    // Step 2: Title appears after mascot settles
+    titleOpacity.value = withDelay(
+      1500,
+      withTiming(1, { duration: 800 }),
+    );
+    titleTranslateY.value = withDelay(
+      1500,
+      withTiming(0, { duration: 800, easing: Easing.out(Easing.cubic) }),
+    );
+
+    // Step 3: Navigate after animation
+    const timer = setTimeout(() => {
+      navigate();
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const mascotStyle = useAnimatedStyle(() => ({
+    opacity: mascotOpacity.value,
+    transform: [
+      { scale: mascotScale.value },
+      { translateY: mascotTranslateY.value },
+    ],
+  }));
+
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: titleTranslateY.value }],
+  }));
+
   return (
-    <ThemedView
-      style={{
-        flex: 1,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: isTablet ? 80 : 50,
-        paddingHorizontal: isTablet ? 40 : 20,
-      }}
-    >
-      <View style={{ alignItems: 'center', gap: 12 }}>
-        <Image
-          source={require('../assets/images/logo/Logo.svg')}
-          style={{
-            width: isTablet ? 150 : 100,
-            height: isTablet ? 150 : 100,
-          }}
-          contentFit='contain'
-        />
-        <ThemedText
-          type='title'
-          style={{
-            fontSize: isTablet ? 48 : 32,
-            lineHeight: isTablet ? 56 : 40,
-            textAlign: 'center',
-          }}
-        >
-          Little Cartoonist
-        </ThemedText>
-        <ThemedText
-          style={{
-            fontSize: isTablet ? 24 : 16,
-            fontWeight: '600',
-            color: '#666',
-            textAlign: 'center',
-          }}
-        >
-          Draw with your animal teacher and make your own storybook
-        </ThemedText>
-      </View>
+    <View style={styles.container}>
+      {/* Mascot */}
+      <Animated.View style={[styles.mascotWrapper, mascotStyle]}>
+        <LogoSvg width='80%' height='80%' />
+      </Animated.View>
 
-      <View style={{ alignItems: 'center', marginTop: 20 }}>
-        <View
-          style={{
-            backgroundColor: 'white',
-            paddingHorizontal: 24,
-            paddingVertical: 16,
-            borderRadius: 30,
-            marginBottom: 20,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 5,
-          }}
-        >
-          <ThemedText
-            style={{
-              fontSize: isTablet ? 28 : 18,
-              fontWeight: 'bold',
-              color: '#333',
-            }}
-          >
-            Hi! Want to draw with me? 👋
-          </ThemedText>
-        </View>
-
-        <Image
-          source={require('../assets/images/logo/Logo.svg')}
-          style={{
-            width: isTablet ? 300 : 200,
-            height: isTablet ? 300 : 200,
-          }}
-          contentFit='contain'
-        />
-      </View>
-
-      <View style={{ alignItems: 'center', width: '100%', gap: 16 }}>
-        <Pressable
-          onPress={() => router.push('/teacher-select')}
-          style={({ pressed }) => ({
-            width: isTablet ? 400 : '90%',
-            paddingVertical: isTablet ? 24 : 18,
-            backgroundColor: '#4CAF50',
-            borderRadius: 30,
-            alignItems: 'center',
-            transform: [{ scale: pressed ? 0.98 : 1 }],
-          })}
-        >
-          <ThemedText
-            style={{
-              color: 'white',
-              fontSize: isTablet ? 28 : 20,
-              fontWeight: '900',
-            }}
-          >
-            🎨 Start Drawing
-          </ThemedText>
-        </Pressable>
-      </View>
-    </ThemedView>
+      {/* Tagline */}
+      <Animated.Text style={[styles.tagline, titleStyle]}>
+        Draw your story!
+      </Animated.Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: palette.pink,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mascotWrapper: {
+    width: width * 0.55,
+    height: width * 0.55,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mascot: {
+    width: '100%',
+    height: '100%',
+  },
+  tagline: {
+    marginTop: 16,
+    fontSize: 18,
+    fontFamily: fonts.semiBold,
+    color: palette.white,
+    letterSpacing: 1,
+  },
+});
